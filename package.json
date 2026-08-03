@@ -1,0 +1,21 @@
+{
+  "name": "internal-link-optimizer",
+  "version": "1.0.0",
+  "description": "Adds relevant internal links to an article based on its primary keyword and your site's sitemap.",
+  "type": "module",
+  "scripts": {
+    "start": "node server.js",
+    "dev": "node --watch server.js"
+  },
+  "dependencies": {
+    "@anthropic-ai/sdk": "^0.68.0",
+    "@mozilla/readability": "^0.6.0",
+    "dotenv": "^16.4.7",
+    "express": "^4.21.2",
+    "fast-xml-parser": "^4.5.1",
+    "jsdom": "^25.0.1",
+    "marked": "^15.0.12",
+    "openai": "^6.49.0",
+    "turndown": "^7.2.0"
+  }
+}
