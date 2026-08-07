@@ -103,13 +103,17 @@ app.post("/api/batch", async (req, res) => {
   }
 
   send("start", { total: list.length });
+  // Shared across every article in this batch: the domain's sitemap and any
+  // candidate page's title only need to be fetched once, not once per article.
+  const cache = { sitemap: new Map(), titles: new Map() };
   for (let i = 0; i < list.length; i++) {
     const article = list[i];
     send("item-start", { index: i, article });
     try {
       const result = await runPipeline(
         { article, domain, maxLinks: Number(maxLinks) || undefined },
-        () => {} // no per-step noise in batch
+        () => {}, // no per-step noise in batch
+        { cache }
       );
       const id = newId();
       saveRun(id, {
