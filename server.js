@@ -3,7 +3,7 @@ import express from "express";
 import { fileURLToPath } from "url";
 import { dirname, join } from "path";
 import { runPipeline } from "./lib/pipeline.js";
-import { applyEdits } from "./lib/apply.js";
+import { applyEdits, markdownToHtml } from "./lib/apply.js";
 import { hasKey, keyName, provider, MODELS } from "./lib/llm.js";
 import { saveRun, listRuns, getRun } from "./lib/store.js";
 
@@ -146,6 +146,11 @@ app.get("/api/history", async (req, res) => {
 app.get("/api/history/:id", async (req, res) => {
   const run = await getRun(req.params.id);
   if (!run) return res.status(404).json({ error: "not found" });
+  // Saved runs omit updatedHtml to keep the file small; regenerate it here so
+  // opening a historical run gets the same HTML preview a live run has.
+  if (run.result?.updatedArticle && !run.result.updatedHtml) {
+    run.result.updatedHtml = markdownToHtml(run.result.updatedArticle);
+  }
   res.json(run);
 });
 

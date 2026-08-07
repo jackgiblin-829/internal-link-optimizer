@@ -4,16 +4,40 @@
     <meta charset="utf-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1" />
     <title>Internal Link Optimizer</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com" />
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+    <link href="https://fonts.googleapis.com/css2?family=Onest:wght@400;500;600;700&display=swap" rel="stylesheet" />
+    <script>
+      // Applied before first paint so a saved dark-mode preference doesn't flash light.
+      try {
+        if (localStorage.getItem("ilo-theme") === "dark") document.documentElement.setAttribute("data-theme", "dark");
+      } catch {}
+    </script>
     <style>
+      /* Palette + type match 829 Studios' brand (829studios.com): Onest type,
+         829's neutral/blue scale, light mode by default (matching their own
+         site) with a dark mode built from the same tokens. Status colors
+         (success/danger) are tuned per-theme for legibility against each
+         background. */
       :root {
-        --bg: #0f1115; --panel: #171a21; --panel-2: #1e222b; --border: #2a2f3a;
-        --text: #e7eaf0; --muted: #97a0b0; --accent: #6ea8fe; --accent-2: #7ee787;
-        --danger: #ff7b72; --radius: 12px;
+        --bg: #ffffff; --panel: #ffffff; --panel-2: #f5f5fa; --border: #ddddeb;
+        --text: #1f1f3d; --muted: #4f4f70; --accent: #2246fa; --accent-strong: #2246fa;
+        --accent-2: #008738; --danger: #ad0322; --dot-check: #ffffff; --radius: 12px;
+        --bg-rgb: 255,255,255; --accent-rgb: 34,70,250; --accent-2-rgb: 0,135,56;
+      }
+      :root[data-theme="dark"] {
+        --bg: #0a0028; --panel: #141429; --panel-2: #1f1f3d; --border: #313152;
+        --text: #f5f5fa; --muted: #9393b8; --accent: #94dbff; --accent-2: #4ade80;
+        --danger: #ff5c72; --dot-check: #08131f;
+        --bg-rgb: 10,0,40; --accent-rgb: 148,219,255; --accent-2-rgb: 74,222,128;
       }
       * { box-sizing: border-box; }
-      body { margin: 0; font: 15px/1.55 -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif; background: var(--bg); color: var(--text); }
-      .wrap { max-width: 900px; margin: 0 auto; padding: 36px 20px 80px; }
-      h1 { font-size: 24px; margin: 0 0 4px; }
+      body { margin: 0; font: 15px/1.55 "Onest", -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif; background: var(--bg); color: var(--text); }
+      .wrap { max-width: 900px; margin: 0 auto; padding: 36px 20px 80px; position: relative; }
+      .brand { display: flex; align-items: center; gap: 12px; margin-bottom: 4px; }
+      .brand-logo { width: 68px; height: auto; flex: 0 0 auto; color: var(--text); }
+      .theme-toggle { position: absolute; top: 36px; right: 20px; width: 30px; height: 30px; padding: 0; display: flex; align-items: center; justify-content: center; background: var(--panel-2); color: var(--text); border: 1px solid var(--border); border-radius: 999px; font-size: 13px; line-height: 1; }
+      h1 { font-size: 24px; margin: 0; }
       .sub { color: var(--muted); margin: 0 0 22px; }
       .tabs { display: flex; gap: 6px; margin-bottom: 20px; border-bottom: 1px solid var(--border); }
       .tab { padding: 9px 16px; cursor: pointer; color: var(--muted); font-weight: 600; border-bottom: 2px solid transparent; margin-bottom: -1px; }
@@ -26,15 +50,15 @@
       textarea:focus, input:focus { outline: none; border-color: var(--accent); }
       .field-row { display: flex; gap: 14px; flex-wrap: wrap; }
       .field-row > div { flex: 1; min-width: 160px; }
-      button { background: var(--accent); color: #08131f; border: 0; border-radius: 8px; padding: 11px 18px; font: inherit; font-weight: 700; cursor: pointer; }
+      button { background: var(--accent-strong); color: #fff; border: 0; border-radius: 8px; padding: 11px 18px; font: inherit; font-weight: 700; cursor: pointer; }
       button:disabled { opacity: 0.5; cursor: not-allowed; }
       .ghost { background: var(--panel-2); color: var(--text); border: 1px solid var(--border); padding: 7px 12px; font-weight: 600; }
       .steps { margin: 24px 0 0; }
       .step { display: flex; gap: 12px; padding: 11px 14px; border: 1px solid var(--border); border-radius: 10px; margin-bottom: 8px; background: var(--panel); align-items: flex-start; }
       .dot { flex: 0 0 20px; width: 20px; height: 20px; border-radius: 50%; border: 2px solid var(--border); margin-top: 2px; position: relative; }
-      .step.running .dot { border-color: var(--accent); animation: pulse 1s infinite; }
+      .step.running .dot { border-color: var(--accent-strong); animation: pulse 1s infinite; }
       .step.done .dot { border-color: var(--accent-2); background: var(--accent-2); }
-      .step.done .dot::after { content: "✓"; position: absolute; inset: -3px 0 0 0; text-align: center; color: #08131f; font-size: 12px; font-weight: 900; }
+      .step.done .dot::after { content: "✓"; position: absolute; inset: -3px 0 0 0; text-align: center; color: var(--dot-check); font-size: 12px; font-weight: 900; }
       @keyframes pulse { 0%,100% { opacity: 1; } 50% { opacity: 0.4; } }
       .step-title { font-weight: 600; font-size: 14px; }
       .step-detail { color: var(--muted); font-size: 13px; margin-top: 3px; white-space: pre-wrap; word-break: break-word; }
@@ -52,10 +76,10 @@
       .prop a:hover { text-decoration: underline; }
       .anchor { color: var(--accent-2); font-weight: 600; }
       .ctx { color: var(--muted); font-size: 13px; margin-top: 4px; }
-      .ctx mark { background: rgba(126,231,135,0.22); color: var(--accent-2); padding: 0 2px; border-radius: 3px; }
+      .ctx mark { background: rgba(var(--accent-2-rgb),0.22); color: var(--accent-2); padding: 0 2px; border-radius: 3px; }
       pre { background: var(--panel-2); border: 1px solid var(--border); border-radius: 8px; padding: 14px; overflow: auto; max-height: 420px; font-size: 12.5px; white-space: pre-wrap; word-break: break-word; }
       .preview { background: #fff; color: #111; border-radius: 8px; padding: 16px 20px; max-height: 420px; overflow: auto; }
-      .preview a { color: #1a56db; }
+      .preview a { color: #2246fa; }
       .otabs { display: flex; gap: 6px; margin-bottom: 10px; }
       .otab { padding: 5px 12px; border: 1px solid var(--border); border-radius: 999px; cursor: pointer; font-size: 12px; color: var(--muted); font-weight: 600; }
       .otab.active { color: var(--text); border-color: var(--accent); }
@@ -69,8 +93,8 @@
       .row-list div:last-child { border-bottom: 0; }
       .reason { color: var(--muted); font-size: 12px; margin-top: 3px; font-style: italic; }
       .conf { font-size: 10.5px; font-weight: 700; padding: 1px 7px; border-radius: 999px; margin-left: 6px; text-transform: uppercase; letter-spacing: .02em; }
-      .conf.high { color: var(--accent-2); border: 1px solid rgba(126,231,135,.45); }
-      .conf.medium { color: var(--accent); border: 1px solid rgba(110,168,254,.45); }
+      .conf.high { color: var(--accent-2); border: 1px solid rgba(var(--accent-2-rgb),.45); }
+      .conf.medium { color: var(--accent); border: 1px solid rgba(var(--accent-rgb),.45); }
       .conf.low { color: var(--muted); border: 1px solid var(--border); }
       .swap { margin-top: 7px; background: var(--panel-2); color: var(--text); border: 1px solid var(--border); border-radius: 6px; padding: 4px 6px; font: inherit; font-size: 12px; max-width: 100%; }
       .swap-label { color: var(--muted); font-size: 11px; margin-right: 4px; }
@@ -80,14 +104,14 @@
       tr.detail > td { background: var(--panel-2); }
       tr.detail .anchor { color: var(--accent-2); }
       tr.detail a { color: var(--accent); text-decoration: none; word-break: break-all; }
-      .loader-overlay { position: fixed; inset: 0; background: rgba(15, 17, 21, 0.8); display: flex; align-items: center; justify-content: center; z-index: 999; backdrop-filter: blur(2px); }
+      .loader-overlay { position: fixed; inset: 0; background: rgba(var(--bg-rgb), 0.85); display: flex; align-items: center; justify-content: center; z-index: 999; backdrop-filter: blur(2px); }
       .loader-overlay.hide { display: none; }
       .loader-content { text-align: center; }
-      .spinner { width: 40px; height: 40px; border: 4px solid var(--border); border-top-color: var(--accent); border-radius: 50%; animation: spin 0.8s linear infinite; margin: 0 auto 24px; }
+      .spinner { width: 40px; height: 40px; border: 4px solid var(--border); border-top-color: var(--accent-strong); border-radius: 50%; animation: spin 0.8s linear infinite; margin: 0 auto 24px; }
       @keyframes spin { to { transform: rotate(360deg); } }
       .loader-text { color: var(--muted); font-size: 13px; font-weight: 500; margin-bottom: 20px; }
       .progress-bar { width: 200px; height: 6px; background: var(--border); border-radius: 999px; overflow: hidden; margin: 0 auto; }
-      .progress-fill { height: 100%; background: linear-gradient(90deg, var(--accent), var(--accent-2)); border-radius: 999px; width: 0%; transition: width 0.3s ease; box-shadow: 0 0 12px rgba(110, 168, 254, 0.4); }
+      .progress-fill { height: 100%; background: linear-gradient(90deg, var(--accent-strong), var(--accent-2)); border-radius: 999px; width: 0%; transition: width 0.3s ease; box-shadow: 0 0 12px rgba(34, 70, 250, 0.4); }
     </style>
   </head>
   <body>
@@ -101,7 +125,13 @@
       </div>
     </div>
     <div class="wrap">
-      <h1>Internal Link Optimizer</h1>
+      <button id="theme-toggle" class="theme-toggle" type="button" title="Toggle light/dark theme" aria-label="Toggle light/dark theme"></button>
+      <div class="brand">
+        <svg class="brand-logo" viewBox="0 0 80 32" xmlns="http://www.w3.org/2000/svg" fill="none" role="img" aria-label="829 Studios logo">
+          <path fill="currentColor" d="M46.4109 15.5426V15.5159C48.2159 14.7477 49.1763 13.2423 49.1763 11.1773C49.1763 7.8734 46.8733 5.89726 42.952 5.89726C39.0307 5.89726 36.7277 7.8734 36.7277 11.1773C36.6801 12.0972 36.9169 13.0095 37.406 13.7904C37.8951 14.5713 38.6129 15.183 39.4619 15.5426V15.5737C37.4124 16.3686 36.292 18.0827 36.292 20.4141C36.292 23.9667 38.7506 26.0805 42.9386 26.0805C47.1267 26.0805 49.5631 23.9844 49.5631 20.4141C49.5853 18.0827 48.4605 16.3996 46.4109 15.5426ZM38.7461 11.3239C38.7461 9.08128 40.3067 7.8956 42.9609 7.8956C45.6151 7.8956 47.1756 9.08128 47.1756 11.3239C47.1756 13.5664 45.6729 14.65 42.9609 14.65C40.2489 14.65 38.7461 13.5087 38.7461 11.3239ZM42.9609 24.0821C39.9777 24.0821 38.3104 22.7499 38.3104 20.2675C38.3104 17.9361 39.951 16.6483 42.9609 16.6483C45.9708 16.6483 47.5891 17.9361 47.5891 20.2675C47.5713 22.7721 45.8907 24.0821 42.9609 24.0821ZM53.5421 25.7252C53.4012 25.7292 53.261 25.703 53.131 25.6483C53.0011 25.5937 52.8844 25.5118 52.7887 25.4083C52.6931 25.3048 52.6208 25.182 52.5767 25.0483C52.5325 24.9145 52.5176 24.7728 52.5329 24.6328V23.718C52.5329 19.7924 53.9823 17.5809 58.277 15.9556C61.4514 14.7477 62.4117 13.5664 62.4117 11.4704C62.4117 9.13901 61.0424 7.8956 58.6594 7.8956C57.8101 7.862 56.9702 8.08354 56.2482 8.53159C55.5262 8.97964 54.9552 9.63362 54.6092 10.4091C54.5302 10.5639 54.409 10.6932 54.2595 10.782C54.11 10.8709 53.9383 10.9155 53.7644 10.9109C53.6329 10.9087 53.5031 10.88 53.3829 10.8265C53.2627 10.7731 53.1545 10.6959 53.0649 10.5998C52.9752 10.5036 52.9059 10.3903 52.8611 10.2667C52.8163 10.1432 52.7969 10.0118 52.8041 9.88062C52.8114 9.66366 52.8677 9.45116 52.9686 9.25892C53.4919 8.21611 54.3037 7.34511 55.3076 6.74926C56.3116 6.15341 57.4656 5.85772 58.6327 5.89726C62.3006 5.89726 64.4124 7.93112 64.4124 11.4704C64.4124 14.6011 63.1009 16.3552 59.3218 17.6875C55.6539 19.0197 54.5336 20.6095 54.5336 23.3272V23.718H63.252C63.5173 23.718 63.7718 23.8233 63.9594 24.0106C64.147 24.198 64.2523 24.4522 64.2523 24.7172C64.2523 24.9822 64.147 25.2363 63.9594 25.4237C63.7718 25.6111 63.5173 25.7163 63.252 25.7163L53.5421 25.7252ZM73.731 5.89726C69.8186 5.89726 67.4667 8.34411 67.4667 12.3586C67.4667 16.373 69.7119 18.7888 73.4598 18.7888C75.4294 18.7888 76.9899 18.0827 78.0036 16.7549H78.0302V18.5845C78.0302 22.3902 76.6342 24.0821 73.5843 24.0821C71.966 24.0821 70.6278 23.4515 69.8587 22.2126C69.7711 22.0529 69.6426 21.9195 69.4863 21.8258C69.3301 21.7322 69.1517 21.6817 68.9695 21.6797C68.84 21.6765 68.7114 21.7009 68.5921 21.7512C68.4728 21.8016 68.3656 21.8767 68.2777 21.9717C68.1898 22.0666 68.1231 22.1792 68.0822 22.3019C68.0413 22.4246 68.027 22.5546 68.0403 22.6833C68.0343 22.902 68.0914 23.1178 68.2048 23.305C69.2451 25.0813 71.188 26.0805 73.5977 26.0805C77.8124 26.0805 79.9998 23.5714 79.9998 18.6999V12.8293C80.0265 8.43738 77.7012 5.89726 73.731 5.89726ZM73.731 16.7904C71.0235 16.7904 69.463 15.1918 69.463 12.3497C69.463 9.50759 71.0235 7.88672 73.731 7.88672C76.4386 7.88672 78.0302 9.45875 78.0302 12.4962C78.0302 15.1607 76.3319 16.7904 73.731 16.7904ZM26.7466 6.28361L16.8278 0.563916C16.1168 0.193458 15.3267 0 14.5248 0C13.7229 0 12.9328 0.193458 12.2218 0.563916L2.30298 6.28361C1.62717 6.71736 1.06536 7.30666 0.664648 8.00207C0.263936 8.69748 0.03601 9.47872 0 10.2803V21.7197C0.03601 22.5212 0.263936 23.3025 0.664648 23.9979C1.06536 24.6933 1.62717 25.2826 2.30298 25.7163L12.2218 31.436C12.9328 31.8065 13.7229 31.9999 14.5248 31.9999C15.3267 31.9999 16.1168 31.8065 16.8278 31.436L26.7466 25.7163C27.4224 25.2826 27.9843 24.6933 28.385 23.9979C28.7857 23.3025 29.0136 22.5212 29.0496 21.7197V10.267C29.0115 9.4677 28.7826 8.68912 28.382 7.99619C27.9813 7.30326 27.4206 6.71607 26.7466 6.28361ZM15.8275 21.8795C15.421 22.0748 14.9758 22.1762 14.5248 22.1762C14.0738 22.1762 13.6286 22.0748 13.2221 21.8795L2.99654 15.9867L13.2221 10.0938C13.6286 9.89853 14.0738 9.79714 14.5248 9.79714C14.9758 9.79714 15.421 9.89853 15.8275 10.0938L26.0531 15.9867L15.8275 21.8795ZM27.0489 10.267V14.2636L16.5255 8.19757L20.0066 6.217C20.4104 6.02611 20.8515 5.92711 21.2982 5.92711C21.7448 5.92711 22.1859 6.02611 22.5897 6.217L25.7685 8.04659C26.1312 8.30094 26.4338 8.63151 26.655 9.01509C26.8762 9.39867 27.0107 9.82596 27.0489 10.267ZM3.30331 7.9933L13.2221 2.27361C13.6292 2.08052 14.0742 1.98034 14.5248 1.98034C14.9754 1.98034 15.4204 2.08052 15.8275 2.27361L19.2864 4.27195L2.00066 14.2592V10.2625C2.03452 9.81116 2.16908 9.37309 2.39448 8.98043C2.61989 8.58778 2.93042 8.25049 3.30331 7.9933ZM2.00066 21.6886V17.6919L12.5241 23.758L9.06523 25.7519C8.66149 25.9427 8.22036 26.0418 7.77367 26.0418C7.32699 26.0418 6.88587 25.9427 6.48214 25.7519L3.30331 23.98C2.92986 23.7224 2.61899 23.3844 2.39356 22.9909C2.16813 22.5974 2.03387 22.1585 2.00066 21.7063V21.6886ZM25.7463 23.98L15.8275 29.6819C15.4204 29.875 14.9754 29.9752 14.5248 29.9752C14.0742 29.9752 13.6292 29.875 13.2221 29.6819L9.76322 27.6836L27.0489 17.7141V21.7108C27.0151 22.1621 26.8805 22.6002 26.6551 22.9929C26.4297 23.3855 26.1192 23.7228 25.7463 23.98Z"/>
+        </svg>
+        <h1>Internal Link Optimizer</h1>
+      </div>
       <p class="sub">Finds relevant internal links for an article, lets you approve them, and inserts them without changing a word of your prose.</p>
 
       <div class="tabs">
@@ -127,8 +157,8 @@
           </div>
           <button id="run" type="submit">Optimize links</button>
         </form>
-        <div class="steps hide" id="steps"></div>
         <div id="results"></div>
+        <div class="steps hide" id="steps"></div>
       </section>
 
       <!-- BATCH -->
@@ -157,7 +187,6 @@
           <div class="bar"><h2 style="margin:0">Run history</h2><button class="ghost" id="history-refresh" type="button">Refresh</button></div>
           <div id="history-list" style="margin-top:12px"></div>
         </div>
-        <div id="history-detail"></div>
       </section>
     </div>
 
@@ -165,13 +194,24 @@
       const $ = (id) => document.getElementById(id);
       const esc = (s) => String(s ?? "").replace(/[&<>"']/g, (c) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" }[c]));
 
+      // ---- Theme toggle ----
+      const currentTheme = () => (document.documentElement.getAttribute("data-theme") === "dark" ? "dark" : "light");
+      const syncThemeIcon = () => { $("theme-toggle").textContent = currentTheme() === "dark" ? "☀️" : "🌙"; };
+      syncThemeIcon();
+      $("theme-toggle").addEventListener("click", () => {
+        const next = currentTheme() === "dark" ? "light" : "dark";
+        document.documentElement.setAttribute("data-theme", next);
+        try { localStorage.setItem("ilo-theme", next); } catch {}
+        syncThemeIcon();
+      });
+
       // ---- Mode tabs ----
-      document.querySelectorAll(".tab").forEach((t) => t.addEventListener("click", () => {
-        document.querySelectorAll(".tab").forEach((x) => x.classList.toggle("active", x === t));
-        const mode = t.dataset.mode;
+      function activateTab(mode) {
+        document.querySelectorAll(".tab").forEach((x) => x.classList.toggle("active", x.dataset.mode === mode));
         for (const m of ["single", "batch", "history"]) $("mode-" + m).classList.toggle("hide", m !== mode);
         if (mode === "history") loadHistory();
-      }));
+      }
+      document.querySelectorAll(".tab").forEach((t) => t.addEventListener("click", () => activateTab(t.dataset.mode)));
 
       // ---- SSE reader ----
       async function readSSE(res, onEvent) {
@@ -405,19 +445,23 @@
 
       // ======================= HISTORY =======================
       async function loadHistory() {
-        $("history-detail").innerHTML = "";
         const runs = await (await fetch("/api/history")).json();
         $("history-list").innerHTML = runs.length ? `<div class="row-list">${runs.map((r) => `<div style="cursor:pointer" data-id="${esc(r.id)}"><b>${esc(r.title || r.url || "(run)")}</b> <span class="pill">${r.addedCount} links</span><div class="muted">${esc(r.domain || "")} · ${esc((r.date || "").slice(0, 16).replace("T", " "))}</div></div>`).join("")}</div>` : `<div class="muted">No runs saved yet.</div>`;
         document.querySelectorAll("#history-list [data-id]").forEach((el) => el.onclick = () => openRun(el.dataset.id));
       }
+      // Reopen a saved run in the Single tab using the exact same rendering a
+      // just-finished run gets — proposed links, swap targets, apply/output —
+      // so it looks and behaves as if the tool had just run.
       async function openRun(id) {
         const run = await (await fetch("/api/history/" + id)).json();
         const r = run.result || {};
-        $("history-detail").innerHTML = `<div class="card"><div class="bar"><h2 style="margin:0">${esc(r.title || run.input?.article || "")}</h2><span class="pill">${esc(r.keyword || "")}</span></div>
-          <div class="muted" style="font-size:12px;margin-top:8px">${esc(run.input?.article || "")}</div>
-          <h2 style="margin-top:16px">Links added (${(r.added || []).length})</h2>
-          <div class="row-list">${(r.added || []).map((a) => `<div><span class="anchor">${esc(a.anchor)}</span> → <a href="${esc(a.url)}" target="_blank">${esc(a.title || a.url)}</a></div>`).join("") || '<div class="muted">none</div>'}</div>
-          <h2 style="margin-top:16px">Updated article</h2><pre>${esc(r.updatedArticle || "")}</pre></div>`;
+        activateTab("single");
+        $("article").value = run.input?.article || "";
+        $("domain").value = run.input?.domain || "";
+        $("maxLinks").value = run.input?.maxLinks ?? "";
+        $("steps").classList.add("hide");
+        renderResults(r);
+        window.scrollTo({ top: 0, behavior: "smooth" });
       }
       $("history-refresh").onclick = loadHistory;
     </script>
