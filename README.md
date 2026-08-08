@@ -94,3 +94,30 @@ The insertion step (6) is designed so the model **cannot** alter your prose:
 
 Because the only operation code performs is wrapping an existing substring,
 drift is structurally impossible rather than merely discouraged by the prompt.
+
+## Known issues / planned improvements
+
+Lower-priority items flagged in review but not yet addressed (no accuracy
+impact, so deferred to a future commit):
+
+- **Latency**: pipeline steps 5 (match links) and 7 (reverse suggestions) are
+  independent LLM calls but run sequentially — could run in parallel like
+  steps 2+3 already do (`lib/pipeline.js`).
+- **Latency**: `/api/batch` processes articles fully sequentially; a bounded
+  concurrency runner (like `fetchTitles`'s worker pool) would cut batch wall
+  time (`server.js`).
+- **Latency**: sitemap-index child sitemaps are fetched one at a time in
+  `collectUrls` — could use the same bounded-concurrency pattern as
+  `fetchTitles` (`lib/sitemap.js`).
+- **Duplication**: `tokenize()` is defined separately (and identically) in
+  `lib/pipeline.js` and `lib/sitemap.js`; the UA string is defined separately
+  in `lib/sitemap.js`, `lib/fetchArticle.js`, and `lib/pageMeta.js`; the SSE
+  `send` helper is redefined in both `/api/run` and `/api/batch` in
+  `server.js`; `looksUrl` (`lib/pipeline.js`) duplicates the already-exported
+  `looksLikeUrl` (`lib/fetchArticle.js`) with slightly different behavior.
+  Worth consolidating into shared helpers so fixes don't need to land in
+  multiple places.
+- **Dead code**: `discoverCandidates`'s `byTerm` return value
+  (`lib/sitemap.js`) is never read by any caller.
+- **Minor**: `applyEdits` (`lib/apply.js`) calls `marked.parse(markdown)`
+  directly instead of the `markdownToHtml()` helper it sits next to.
