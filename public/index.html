@@ -50,7 +50,7 @@
       textarea:focus, input:focus { outline: none; border-color: var(--accent); }
       .field-row { display: flex; gap: 14px; flex-wrap: wrap; }
       .field-row > div { flex: 1; min-width: 160px; }
-      button { background: var(--accent-strong); color: #fff; border: 0; border-radius: 8px; padding: 11px 18px; font: inherit; font-weight: 700; cursor: pointer; }
+      button { display: inline-flex; align-items: center; justify-content: center; background: var(--accent-strong); color: #fff; border: 0; border-radius: 8px; padding: 11px 18px; font: inherit; font-weight: 700; cursor: pointer; line-height: 1.2; }
       button:disabled { opacity: 0.5; cursor: not-allowed; }
       .ghost { background: var(--panel-2); color: var(--text); border: 1px solid var(--border); padding: 7px 12px; font-weight: 600; }
       .steps { margin: 24px 0 0; }
@@ -80,8 +80,8 @@
       pre { background: var(--panel-2); border: 1px solid var(--border); border-radius: 8px; padding: 14px; overflow: auto; max-height: 420px; font-size: 12.5px; white-space: pre-wrap; word-break: break-word; }
       .preview { background: #fff; color: #111; border-radius: 8px; padding: 16px 20px; max-height: 420px; overflow: auto; }
       .preview a { color: #2246fa; }
-      .otabs { display: flex; gap: 6px; margin-bottom: 10px; }
-      .otab { padding: 5px 12px; border: 1px solid var(--border); border-radius: 999px; cursor: pointer; font-size: 12px; color: var(--muted); font-weight: 600; }
+      .otabs { display: flex; align-items: center; flex-wrap: wrap; gap: 6px; margin-top: 14px; margin-bottom: 10px; }
+      .otab { display: inline-flex; align-items: center; padding: 8px 14px; border: 1px solid var(--border); border-radius: 999px; cursor: pointer; font-size: 12px; color: var(--muted); font-weight: 600; line-height: 1; }
       .otab.active { color: var(--text); border-color: var(--accent); }
       table { width: 100%; border-collapse: collapse; font-size: 13px; }
       th, td { text-align: left; padding: 9px 10px; border-bottom: 1px solid var(--border); vertical-align: top; }
@@ -355,8 +355,9 @@
           $("out-md").classList.toggle("hide", t.dataset.o !== "md");
           $("out-html") && $("out-html").classList.toggle("hide", t.dataset.o !== "html");
         });
-        $("copyMd").onclick = () => { navigator.clipboard.writeText(window._md); $("copyMd").textContent = "Copied ✓"; };
-        if ($("copyHtml")) $("copyHtml").onclick = () => { navigator.clipboard.writeText(window._html); $("copyHtml").textContent = "Copied ✓"; };
+        const flashCopied = (btn, label) => { btn.textContent = "Copied ✓"; setTimeout(() => { btn.textContent = label; }, 1500); };
+        $("copyMd").onclick = () => { navigator.clipboard.writeText(window._md); flashCopied($("copyMd"), "Copy MD"); };
+        if ($("copyHtml")) $("copyHtml").onclick = () => { navigator.clipboard.writeText(window._html); flashCopied($("copyHtml"), "Copy HTML"); };
         $("dlMd").onclick = () => { const b = new Blob([window._md], { type: "text/markdown" }); const a = document.createElement("a"); a.href = URL.createObjectURL(b); a.download = "article-with-links.md"; a.click(); };
 
         // Mark the inserted links inside the Preview so they can be highlighted.
