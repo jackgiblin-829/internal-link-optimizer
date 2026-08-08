@@ -150,103 +150,49 @@ Start the application:
 npm start
 ```
 
-Open [http://localhost:5055](http://localhost:5055).
+Open http://localhost:5055
 
-For development with automatic server restarts:
+## Provider (OpenAI or Anthropic)
 
-```bash
-npm run dev
-```
+Set **one** key in `.env`:
 
-## Configuration
+- `OPENAI_API_KEY=sk-...` → uses OpenAI (defaults: `gpt-4o-mini` / `gpt-4o`)
+- `ANTHROPIC_API_KEY=sk-ant-...` → uses Anthropic (defaults: `claude-sonnet-5` / `claude-opus-5`)
 
-| Variable | Purpose | Default |
-| --- | --- | --- |
-| `PORT` | Local server port | `5055` |
-| `LLM_PROVIDER` | Force `openai` or `anthropic` | Auto-detected from the available key; OpenAI wins if both exist |
-| `OPENAI_API_KEY` | OpenAI credential | None |
-| `ANTHROPIC_API_KEY` | Anthropic credential | None |
-| `MODEL_LIGHT` | Summary model | Provider-specific value in `lib/llm.js` |
-| `MODEL_HEAVY` | Extraction and matching model | Provider-specific value in `lib/llm.js` |
+It auto-detects from whichever key is present (OpenAI wins if both are set; force
+with `LLM_PROVIDER=openai|anthropic`). Override models with `MODEL_LIGHT` /
+`MODEL_HEAVY`. The provider and models in use are printed at startup and served
+at `/api/health`.
 
-The active provider and model names are printed at startup and returned by `GET /api/health`.
+> Note: defaults use standard chat models. If you point `MODEL_HEAVY` at an
+> OpenAI reasoning model (o-series/GPT‑5), those reject a custom `temperature`
+> and use `max_completion_tokens` — stick to `gpt-4o`/`gpt-4.1`-class models, or
+> adjust `lib/llm.js`.
 
-Model overrides must support the request parameters used by `lib/llm.js`, including `temperature` and the configured token limit. If a model uses a different API parameter contract, update that provider adapter before selecting it.
+## Notes
 
-## API routes
+- **Sitemap discovery** reads `robots.txt` plus `/sitemap.xml` and
+  `/sitemap_index.xml`, following sitemap-index files. Candidates are ranked by
+  how well the URL slug overlaps the primary keyword.
+- **No Firecrawl needed.** The original template used Firecrawl's `map` endpoint;
+  this build fetches the sitemap directly. If you later want Firecrawl's
+  content-aware search, `lib/sitemap.js` is the single place to swap it in.
+- **Models** default to `claude-sonnet-5` (summary/keyword) and
+  `claude-opus-5` (link selection/insertion). Override in `.env`.
+## How link insertion avoids LLM drift
 
-| Method | Route | Purpose |
-| --- | --- | --- |
-| `GET` | `/api/health` | Report provider, models, key availability, and service status |
-| `POST` | `/api/run` | Stream a single optimization run with server-sent events |
-| `POST` | `/api/apply` | Deterministically apply a selected set of edits without an LLM call |
-| `POST` | `/api/batch` | Stream sequential optimization results for multiple URLs |
-| `GET` | `/api/history` | List locally saved runs |
-| `GET` | `/api/history/:id` | Load one saved run and regenerate its HTML preview |
+The insertion step (6) is designed so the model **cannot** alter your prose:
 
-## Project structure
+1. **The model never emits the article.** It only returns a JSON list of edits —
+   `{ anchor, url }` — where `anchor` must be a verbatim phrase from the article.
+2. **Code performs the insertion** (`lib/insertLinks.js`). It finds that exact
+   substring and wraps it in a markdown link. Existing links, inline code, and
+   fenced code blocks are masked first, so nothing is ever inserted inside them.
+   Anchors that aren't an exact match, or that repeat a URL, are skipped and
+   reported — never forced.
+3. **A verification pass** (`verifyNoDrift`) strips all links from the result and
+   confirms it's byte-identical to the original prose. The UI shows a
+   "prose unchanged ✓" badge; if it ever fails, it warns you not to publish.
 
-| Path | Responsibility |
-| --- | --- |
-| `server.js` | Express server, API routes, streaming, batch orchestration, and history integration |
-| `lib/pipeline.js` | Seven-step optimization workflow, validation, ranking, and density controls |
-| `lib/fetchArticle.js` | Article fetching, Readability extraction, Markdown conversion, and existing-link detection |
-| `lib/sitemap.js` | Sitemap discovery, recursive URL collection, exclusions, and first-pass candidate scoring |
-| `lib/pageMeta.js` | Bounded-concurrency page-title fetching and caching |
-| `lib/llm.js` | OpenAI and Anthropic provider adapter and model configuration |
-| `lib/insertLinks.js` | Deterministic anchor matching, protected-region masking, insertion, and drift verification |
-| `lib/apply.js` | Edit application, HTML rendering, and review-context generation |
-| `lib/store.js` | Local run persistence and history retrieval |
-| `public/index.html` | Browser interface |
-
-## Important limitations
-
-- Candidate recall depends on accessible sitemaps and descriptive URL slugs or page titles. Relevant pages with opaque URLs may never enter the candidate pool.
-- Standard HTTP fetching does not execute client-side JavaScript. Paste article content directly when Readability cannot extract it.
-- Page-title requests can fail because of firewalls, bot protection, timeouts, or authentication. The URL remains available to the matcher, but with less context.
-- LLM output is probabilistic. The server validates anchors and destinations, but a human should judge whether each recommendation is genuinely helpful.
-- The first eligible occurrence of an anchor is linked. The model does not select a specific duplicate occurrence in the article.
-- Run history is stored on the local machine and is not a shared database.
-- Batch mode applies every validated proposal automatically and processes articles sequentially.
-
-## Troubleshooting
-
-**The app reports that an API key is missing**
-
-Add the matching provider key to `.env`, then restart the server. Confirm the detected provider with `/api/health`.
-
-**The article contains very little extracted content**
-
-The page is probably rendered in the browser with JavaScript or protected from automated fetching. Paste the article's text or Markdown into the app instead of submitting its URL.
-
-**No sitemap candidates are found**
-
-Confirm that the domain is correct and that `robots.txt`, `/sitemap.xml`, or `/sitemap_index.xml` exposes the site's URLs. Sites with opaque slugs may need a future content-aware discovery integration.
-
-**A proposed link was skipped**
-
-The anchor may not have an eligible whole-word occurrence, may already be inside a link or code region, or may duplicate another selected anchor or destination. Skips are reported rather than forced.
-
-**A page title is missing**
-
-The destination may have timed out or rejected the title request. The matcher falls back to the exact URL.
-
-## Development principles
-
-The repository's product constraints are documented in `CLAUDE.md`. In particular:
-
-- Recommendation quality takes priority over link quantity.
-- Article prose must never be changed to create a link.
-- Link insertion must remain deterministic.
-- `verifyNoDrift` protections must not be removed.
-- Human approval is the default workflow.
-- New ranking behavior should be testable.
-- Changes should be proposed through a branch and pull request, not committed directly to `main`.
-
-## Planned improvements
-
-- Run destination matching and reverse-link suggestions concurrently.
-- Add bounded concurrency to batch processing and sitemap-index fetching.
-- Consolidate duplicated tokenization, URL detection, user-agent, and event-stream helpers.
-- Remove the unused per-term discovery return value.
-- Add automated tests for candidate ranking, exclusion normalization, anchor boundaries, protected Markdown regions, duplicate handling, and drift verification.
+Because the only operation code performs is wrapping an existing substring,
+drift is structurally impossible rather than merely discouraged by the prompt.

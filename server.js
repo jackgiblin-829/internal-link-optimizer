@@ -26,6 +26,11 @@ function sseHead(res) {
   });
 }
 
+/** SSE event sender bound to one response. */
+function sseSend(res) {
+  return (type, payload) => res.write(`data: ${JSON.stringify({ type, ...payload })}\n\n`);
+}
+
 // A monotonic-ish id without Date.now (kept out of pipeline); fine for the server.
 let counter = 0;
 function newId() {
@@ -37,7 +42,7 @@ function newId() {
 app.post("/api/run", async (req, res) => {
   const { article, domain, maxLinks } = req.body || {};
   sseHead(res);
-  const send = (type, payload) => res.write(`data: ${JSON.stringify({ type, ...payload })}\n\n`);
+  const send = sseSend(res);
 
   if (!hasKey()) {
     send("error", { message: `${keyName()} is not set. Add it to .env and restart.` });
@@ -88,7 +93,7 @@ app.post("/api/apply", (req, res) => {
 app.post("/api/batch", async (req, res) => {
   const { urls, domain, maxLinks } = req.body || {};
   sseHead(res);
-  const send = (type, payload) => res.write(`data: ${JSON.stringify({ type, ...payload })}\n\n`);
+  const send = sseSend(res);
 
   if (!hasKey()) {
     send("error", { message: `${keyName()} is not set. Add it to .env and restart.` });
@@ -106,35 +111,45 @@ app.post("/api/batch", async (req, res) => {
   // Shared across every article in this batch: the domain's sitemap and any
   // candidate page's title only need to be fetched once, not once per article.
   const cache = { sitemap: new Map(), titles: new Map() };
-  for (let i = 0; i < list.length; i++) {
-    const article = list[i];
-    send("item-start", { index: i, article });
-    try {
-      const result = await runPipeline(
-        { article, domain, maxLinks: Number(maxLinks) || undefined },
-        () => {}, // no per-step noise in batch
-        { cache }
-      );
-      const id = newId();
-      saveRun(id, {
-        id,
-        date: new Date().toISOString(),
-        input: { article, domain, maxLinks: Number(maxLinks) || null },
-        result: { ...result, updatedHtml: undefined },
-      }).catch(() => {});
-      send("item-done", {
-        index: i,
-        article,
-        id,
-        title: result.title,
-        added: result.added,
-        driftOk: result.driftOk,
-        updatedArticle: result.updatedArticle,
-      });
-    } catch (err) {
-      send("item-error", { index: i, article, message: err?.message || "failed" });
+
+  // Bounded-concurrency worker pool (same pattern as fetchTitles in
+  // lib/pageMeta.js): each worker pulls the next index off a shared counter.
+  // The UI keys every row by `index` (public/index.html), so out-of-order
+  // completion renders correctly.
+  let next = 0;
+  async function worker() {
+    while (next < list.length) {
+      const i = next++;
+      const article = list[i];
+      send("item-start", { index: i, article });
+      try {
+        const result = await runPipeline(
+          { article, domain, maxLinks: Number(maxLinks) || undefined },
+          () => {}, // no per-step noise in batch
+          { cache }
+        );
+        const id = newId();
+        saveRun(id, {
+          id,
+          date: new Date().toISOString(),
+          input: { article, domain, maxLinks: Number(maxLinks) || null },
+          result: { ...result, updatedHtml: undefined },
+        }).catch(() => {});
+        send("item-done", {
+          index: i,
+          article,
+          id,
+          title: result.title,
+          added: result.added,
+          driftOk: result.driftOk,
+          updatedArticle: result.updatedArticle,
+        });
+      } catch (err) {
+        send("item-error", { index: i, article, message: err?.message || "failed" });
+      }
     }
   }
+  await Promise.all(Array.from({ length: Math.min(3, list.length) }, worker));
   send("batch-done", {});
   res.end();
 });
