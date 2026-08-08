@@ -1,11 +1,7 @@
 import { test } from "node:test";
 import assert from "node:assert/strict";
-import {
-  parseSitemapXml,
-  tokenize,
-  scoreSlug,
-  normalizeUrlForComparison,
-} from "../lib/sitemap.js";
+import { parseSitemapXml, scoreSlug, normalizeUrlForComparison } from "../lib/sitemap.js";
+import { tokenize } from "../lib/text.js";
 
 test("parseSitemapXml reads a standard urlset sitemap", () => {
   const xml = `<?xml version="1.0"?>
