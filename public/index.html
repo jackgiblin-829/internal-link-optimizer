@@ -112,6 +112,34 @@
       .loader-text { color: var(--muted); font-size: 13px; font-weight: 500; margin-bottom: 20px; }
       .progress-bar { width: 200px; height: 6px; background: var(--border); border-radius: 999px; overflow: hidden; margin: 0 auto; }
       .progress-fill { height: 100%; background: linear-gradient(90deg, var(--accent-strong), var(--accent-2)); border-radius: 999px; width: 0%; transition: width 0.3s ease; box-shadow: 0 0 12px rgba(34, 70, 250, 0.4); }
+
+      /* ---- How it works ---- */
+      .hiw-phases { display: flex; align-items: stretch; gap: 10px; margin: 18px 0 26px; }
+      .hiw-phase { flex: 1 1 0; background: var(--panel-2); border: 1px solid var(--border); border-radius: var(--radius); padding: 16px; min-width: 0; }
+      .hiw-phase-num { display: inline-flex; align-items: center; justify-content: center; width: 24px; height: 24px; border-radius: 50%; background: var(--accent); color: #fff; font-size: 12px; font-weight: 700; margin-bottom: 10px; }
+      .hiw-phase h3 { margin: 0 0 6px; font-size: 14px; }
+      .hiw-phase p { margin: 0; color: var(--muted); font-size: 12.5px; }
+      .hiw-arrow { display: flex; align-items: center; justify-content: center; color: var(--muted); font-size: 20px; flex: 0 0 auto; padding: 0 2px; }
+      @media (max-width: 720px) {
+        .hiw-phases { flex-direction: column; }
+        .hiw-arrow { transform: rotate(90deg); padding: 4px 0; align-self: center; }
+      }
+      .hiw-flow { margin: 10px 0 6px; }
+      .hiw-step { display: flex; gap: 14px; position: relative; padding-bottom: 22px; }
+      .hiw-step:last-child { padding-bottom: 0; }
+      .hiw-step:not(:last-child)::before { content: ""; position: absolute; left: 15px; top: 32px; bottom: 0; width: 2px; background: var(--border); }
+      .hiw-num { flex: 0 0 32px; width: 32px; height: 32px; border-radius: 50%; border: 2px solid var(--accent); color: var(--accent); display: flex; align-items: center; justify-content: center; font-weight: 700; font-size: 13px; background: var(--panel); z-index: 1; }
+      .hiw-body { flex: 1; min-width: 0; padding-top: 3px; }
+      .hiw-title { font-weight: 600; font-size: 14px; }
+      .hiw-desc { color: var(--muted); font-size: 13px; margin-top: 4px; }
+      .hiw-tag { font-size: 10px; font-weight: 700; text-transform: uppercase; letter-spacing: .03em; padding: 2px 7px; border-radius: 999px; margin-left: 8px; vertical-align: 1px; white-space: nowrap; }
+      .hiw-tag.llm { color: var(--accent); border: 1px solid rgba(var(--accent-rgb),.4); }
+      .hiw-tag.code { color: var(--accent-2); border: 1px solid rgba(var(--accent-2-rgb),.4); }
+      .hiw-callout { background: var(--panel-2); border: 1px solid var(--border); border-radius: var(--radius); padding: 16px 18px; margin: 18px 0 0; font-size: 13px; }
+      .hiw-callout.safe { border-color: rgba(var(--accent-2-rgb),.4); }
+      .hiw-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(230px, 1fr)); gap: 14px; margin: 12px 0 0; }
+      .hiw-term dt { font-weight: 700; font-size: 13px; }
+      .hiw-term dd { margin: 3px 0 0; color: var(--muted); font-size: 12.5px; }
     </style>
   </head>
   <body>
@@ -138,6 +166,7 @@
         <div class="tab active" data-mode="single">Single</div>
         <div class="tab" data-mode="batch">Batch</div>
         <div class="tab" data-mode="history">History</div>
+        <div class="tab" data-mode="how">How it works</div>
       </div>
 
       <!-- SINGLE -->
@@ -188,6 +217,111 @@
           <div id="history-list" style="margin-top:12px"></div>
         </div>
       </section>
+
+      <!-- HOW IT WORKS -->
+      <section id="mode-how" class="hide">
+        <div class="card">
+          <h2 style="margin:0 0 4px">How it works</h2>
+          <p class="muted" style="font-size:13px;margin:0 0 4px">
+            The model never rewrites your article. It only proposes <b>which existing phrase</b> should
+            link to <b>which existing page</b> — the actual editing is a deterministic, verifiable
+            operation done entirely in code.
+          </p>
+
+          <div class="hiw-phases">
+            <div class="hiw-phase"><div class="hiw-phase-num">1</div><h3>Understand the article</h3><p>Parse the URL or pasted text into clean Markdown, then summarize it and pull out verbatim anchor phrases.</p></div>
+            <div class="hiw-arrow">→</div>
+            <div class="hiw-phase"><div class="hiw-phase-num">2</div><h3>Discover your site</h3><p>Crawl your sitemap, score every URL against the article's topics, and fetch titles for the best matches.</p></div>
+            <div class="hiw-arrow">→</div>
+            <div class="hiw-phase"><div class="hiw-phase-num">3</div><h3>Match, then insert</h3><p>An LLM proposes anchor → page pairs. Code — not the model — wraps the exact text in a link.</p></div>
+            <div class="hiw-arrow">→</div>
+            <div class="hiw-phase"><div class="hiw-phase-num">4</div><h3>Review &amp; ship</h3><p>Keep or discard proposals, then export the Markdown or HTML — or find it later in History.</p></div>
+          </div>
+
+          <h3 style="font-size:14px;margin:22px 0 2px">The 7 steps, in detail</h3>
+          <p class="muted" style="font-size:12.5px;margin:0 0 14px">This is exactly what runs behind the Single tab's live progress list.</p>
+
+          <div class="hiw-flow">
+            <div class="hiw-step">
+              <div class="hiw-num">1</div>
+              <div class="hiw-body">
+                <div class="hiw-title">Fetch &amp; parse article <span class="hiw-tag code">Code</span></div>
+                <div class="hiw-desc">Downloads the URL (or uses your pasted text), extracts the readable content, and converts it to clean Markdown.</div>
+              </div>
+            </div>
+            <div class="hiw-step">
+              <div class="hiw-num">2</div>
+              <div class="hiw-body">
+                <div class="hiw-title">Summarize article <span class="hiw-tag llm">LLM call</span></div>
+                <div class="hiw-desc">A lightweight model writes a 3–5 sentence summary, used later for ranking context and reverse-link suggestions. Runs in parallel with step 3.</div>
+              </div>
+            </div>
+            <div class="hiw-step">
+              <div class="hiw-num">3</div>
+              <div class="hiw-body">
+                <div class="hiw-title">Find linkable phrases <span class="hiw-tag llm">LLM call</span></div>
+                <div class="hiw-desc">Extracts up to 12 <b>verbatim</b> anchor phrases, a few search terms per phrase, and one primary keyword for the article.</div>
+              </div>
+            </div>
+            <div class="hiw-step">
+              <div class="hiw-num">4</div>
+              <div class="hiw-body">
+                <div class="hiw-title">Discover &amp; rank candidate pages <span class="hiw-tag code">Code</span></div>
+                <div class="hiw-desc">Crawls your domain's sitemap (robots.txt → sitemap.xml / sitemap_index.xml), scores every URL by keyword overlap, fetches titles for the top matches, then re-ranks by title + slug relevance. The article's own URL, and anything it already links to, is excluded.</div>
+              </div>
+            </div>
+            <div class="hiw-step">
+              <div class="hiw-num">5</div>
+              <div class="hiw-body">
+                <div class="hiw-title">Match anchors to pages <span class="hiw-tag llm">LLM call</span></div>
+                <div class="hiw-desc">Given the ranked candidates and the anchor phrases, the model proposes anchor → URL pairs, each with a short reason and a high / medium / low confidence.</div>
+              </div>
+            </div>
+            <div class="hiw-step">
+              <div class="hiw-num">6</div>
+              <div class="hiw-body">
+                <div class="hiw-title">Insert &amp; verify <span class="hiw-tag code">Code</span></div>
+                <div class="hiw-desc">Wraps each matched anchor in a markdown link — nothing else in the text is touched — then confirms the article is byte-identical to the original once link syntax is stripped back out. This is the "prose unchanged ✓" check.</div>
+              </div>
+            </div>
+            <div class="hiw-step">
+              <div class="hiw-num">7</div>
+              <div class="hiw-body">
+                <div class="hiw-title">Reverse-link suggestions <span class="hiw-tag llm">LLM call</span></div>
+                <div class="hiw-desc">Looks at the same candidate pages and suggests up to 5 existing pages that should add a link back to this new article.</div>
+              </div>
+            </div>
+          </div>
+
+          <div class="hiw-callout">
+            <b>Your review, before anything ships.</b> The result shown is generated with every proposed
+            link already applied. Uncheck anything you don't want — low-confidence proposals start
+            unchecked — then click <i>Apply selected</i> to re-run step 6 on just your picks. No LLM is
+            involved in that re-apply; it's the same deterministic code, run again on a shorter list.
+            <div class="muted" style="margin-top:8px;font-size:12px">Batch mode runs this same pipeline per URL but skips this review step — every proposed link is applied automatically.</div>
+          </div>
+
+          <div class="hiw-callout safe">
+            <b>What makes it safe:</b> the model is only ever allowed to choose <i>which existing words</i>
+            to link and <i>where they should point</i>. It never generates prose, and the insertion code
+            can only wrap an exact substring already present in your article. If that guarantee were ever
+            violated, the drift check would catch it and flag the run instead of silently shipping it.
+          </div>
+
+          <h3 style="font-size:14px;margin:22px 0 2px">Key concepts</h3>
+          <dl class="hiw-grid">
+            <div class="hiw-term"><dt>Anchor</dt><dd>The exact, verbatim phrase from the article that gets wrapped in a link. The model can only pick phrases that already exist in the text.</dd></div>
+            <div class="hiw-term"><dt>Candidate page</dt><dd>A page on your own site, found via its sitemap, being considered as a link destination.</dd></div>
+            <div class="hiw-term"><dt>Confidence</dt><dd>The model's own high / medium / low estimate of how strong an anchor → page match is.</dd></div>
+            <div class="hiw-term"><dt>Drift check</dt><dd>The deterministic, code-only comparison proving that inserting links didn't change a single word of the article's prose.</dd></div>
+            <div class="hiw-term"><dt>Sitemap discovery</dt><dd>Reading a domain's robots.txt and sitemap.xml / sitemap_index.xml to build the list of known pages to link to.</dd></div>
+            <div class="hiw-term"><dt>Reverse link</dt><dd>A link in the opposite direction — from an existing page on the site pointing to the newly optimized article.</dd></div>
+            <div class="hiw-term"><dt>Human approval</dt><dd>The step where you keep or discard proposed links before anything is final. Available in Single mode only.</dd></div>
+            <div class="hiw-term"><dt>Batch mode</dt><dd>Runs the same pipeline across a list of URLs, sharing one sitemap/title lookup, but applies every proposed link automatically.</dd></div>
+            <div class="hiw-term"><dt>History</dt><dd>Every completed run — single or batch — is saved locally so it can be reopened later.</dd></div>
+          </dl>
+        </div>
+      </section>
     </div>
 
     <script>
@@ -208,7 +342,7 @@
       // ---- Mode tabs ----
       function activateTab(mode) {
         document.querySelectorAll(".tab").forEach((x) => x.classList.toggle("active", x.dataset.mode === mode));
-        for (const m of ["single", "batch", "history"]) $("mode-" + m).classList.toggle("hide", m !== mode);
+        for (const m of ["single", "batch", "history", "how"]) $("mode-" + m).classList.toggle("hide", m !== mode);
         if (mode === "history") loadHistory();
       }
       document.querySelectorAll(".tab").forEach((t) => t.addEventListener("click", () => activateTab(t.dataset.mode)));
